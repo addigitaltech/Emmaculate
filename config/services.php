@@ -1,0 +1,71 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Third Party Services
+    |--------------------------------------------------------------------------
+    |
+    | This file is for storing the credentials for third party services such
+    | as Mailgun, Postmark, AWS and more. This file provides the de facto
+    | location for this type of information, allowing packages to have
+    | a conventional file to locate the various service credentials.
+    |
+    */
+
+    'postmark' => [
+        'key' => env('POSTMARK_API_KEY'),
+    ],
+
+    'resend' => [
+        'key' => env('RESEND_API_KEY'),
+    ],
+
+    'ses' => [
+        'key' => env('AWS_ACCESS_KEY_ID'),
+        'secret' => env('AWS_SECRET_ACCESS_KEY'),
+        'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+    ],
+
+    'slack' => [
+        'notifications' => [
+            'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
+            'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
+        ],
+    ],
+
+    // Text messages (payment alerts). Leave empty to switch SMS off. Termii is a Nigerian SMS provider (termii.com).
+    'sms' => [
+        'driver' => env('SMS_DRIVER'),
+        'termii' => [
+            'api_key' => env('TERMII_API_KEY'),
+            'sender_id' => env('TERMII_SENDER_ID'),
+            'base_url' => env('TERMII_BASE_URL', 'https://api.ng.termii.com'),
+            'channel' => env('TERMII_CHANNEL', 'generic'),
+        ],
+    ],
+
+    // Cloudflare Turnstile (sign-in protection). Leave both empty to switch it off.
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+        // Comma-separated hostnames this site is served on. Empty means "the host the visitor used".
+        'hostnames' => env('TURNSTILE_HOSTNAMES'),
+        // Keep true in production. Set false only when trying Cloudflare's dummy test keys, which report a fake hostname/action.
+        'strict_context' => env('TURNSTILE_STRICT_CONTEXT', true),
+    ],
+
+    'paystack' => [
+        'secret_key' => env('PAYSTACK_SECRET_KEY'),
+        'base_url' => env('PAYSTACK_BASE_URL', 'https://api.paystack.co'),
+    ],
+
+    'flutterwave' => [
+        'secret_key' => env('FLUTTERWAVE_SECRET_KEY'),
+        'secret_hash' => env('FLUTTERWAVE_SECRET_HASH'),
+        'public_key' => env('FLUTTERWAVE_PUBLIC_KEY'),
+        'base_url' => env('FLUTTERWAVE_BASE_URL', 'https://api.flutterwave.com/v3'),
+    ],
+
+];

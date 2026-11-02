@@ -1,0 +1,256 @@
+/*
+ * Public-site behaviour. Plain JavaScript only: the site's Content-Security-Policy
+ * forbids inline/eval scripts, so Alpine expressions cannot run.
+ */
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ----- Mobile navigation ----- */
+function initMobileNav() {
+    const toggle = document.querySelector('[data-nav-toggle]');
+    const panel = document.getElementById('mobile-nav');
+    if (!toggle || !panel) return;
+
+    const setOpen = (open) => {
+        panel.classList.toggle('is-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.querySelector('[data-icon-open]')?.toggleAttribute('hidden', open);
+        toggle.querySelector('[data-icon-close]')?.toggleAttribute('hidden', !open);
+    };
+    toggle.addEventListener('click', () => setOpen(!panel.classList.contains('is-open')));
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && panel.classList.contains('is-open')) {
+            setOpen(false);
+            toggle.focus();
+        }
+    });
+
+    panel.querySelectorAll('[data-sub-toggle]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const sub = document.getElementById(button.getAttribute('aria-controls'));
+            if (!sub) return;
+            const open = !sub.classList.contains('is-open');
+            sub.classList.toggle('is-open', open);
+            button.setAttribute('aria-expanded', String(open));
+        });
+    });
+}
+
+/* ----- Result checker: the Term list only shows terms of the chosen Session ----- */
+function initTermFilter() {
+    const session = document.querySelector('[data-term-filter-source]');
+    const term = document.querySelector('[data-term-filter-target]');
+    if (!session || !term) return;
+
+    const apply = () => {
+        let firstVisible = null;
+        term.querySelectorAll('option').forEach((option) => {
+            const show = option.dataset.session === session.value;
+            option.hidden = !show;
+            option.disabled = !show;
+            if (show && !firstVisible) firstVisible = option;
+        });
+        const selected = term.selectedOptions[0];
+        if ((!selected || selected.disabled) && firstVisible) term.value = firstVisible.value;
+    };
+    session.addEventListener('change', apply);
+    apply();
+}
+
+/* ----- Mobile header fades while the page is being scrolled ----- */
+function initHeaderFade() {
+    const header = document.querySelector('.site-header');
+    if (!header || reduceMotion) return;
+    const compact = window.matchMedia('(max-width: 1079px)');
+    const menu = document.getElementById('mobile-nav');
+    let timer = null;
+
+    const clear = () => header.classList.remove('is-scrolling');
+    window.addEventListener('scroll', () => {
+        if (!compact.matches || window.scrollY < 24 || menu?.classList.contains('is-open')) {
+            clear();
+
+            return;
+        }
+        header.classList.add('is-scrolling');
+        window.clearTimeout(timer);
+        timer = window.setTimeout(clear, 700);
+    }, { passive: true });
+    header.addEventListener('touchstart', clear, { passive: true });
+}
+
+/* ----- Desktop dropdowns (hover and focus work through CSS; this adds tap/click + Escape) ----- */
+function initDropdowns() {
+    const items = document.querySelectorAll('.has-dropdown');
+    const closeAll = (except) => items.forEach((item) => {
+        if (item !== except) {
+            item.classList.remove('is-open');
+            item.querySelector('[data-dropdown-toggle]')?.setAttribute('aria-expanded', 'false');
+        }
+    });
+    items.forEach((item) => {
+        const button = item.querySelector('[data-dropdown-toggle]');
+        if (!button) return;
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const open = !item.classList.contains('is-open');
+            closeAll(item);
+            item.classList.toggle('is-open', open);
+            button.setAttribute('aria-expanded', String(open));
+        });
+    });
+    document.addEventListener('click', () => closeAll(null));
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeAll(null);
+    });
+}
+
+/* ----- Hero slider ----- */
+function initHero() {
+    const hero = document.querySelector('[data-hero]');
+    if (!hero) return;
+    const slides = Array.from(hero.querySelectorAll('[data-hero-slide]'));
+    const dots = Array.from(hero.querySelectorAll('[data-hero-dot]'));
+    if (slides.length < 2) return;
+
+    let index = 0;
+    let timer = null;
+    const show = (next) => {
+        index = (next + slides.length) % slides.length;
+        slides.forEach((slide, i) => {
+            const active = i === index;
+            slide.classList.toggle('is-active', active);
+            slide.setAttribute('aria-hidden', String(!active));
+            slide.querySelectorAll('a,button').forEach((el) => el.setAttribute('tabindex', active ? '0' : '-1'));
+        });
+        dots.forEach((dot, i) => dot.setAttribute('aria-current', String(i === index)));
+    };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const start = () => { if (!reduceMotion && !timer) timer = setInterval(() => show(index + 1), 6500); };
+
+    dots.forEach((dot, i) => dot.addEventListener('click', () => { show(i); stop(); start(); }));
+    hero.addEventListener('mouseenter', stop);
+    hero.addEventListener('mouseleave', start);
+    hero.addEventListener('focusin', stop);
+    hero.addEventListener('focusout', start);
+    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+    show(0);
+    start();
+}
+
+/* ----- Gallery: category filter and lightbox ----- */
+function initGallery() {
+    const root = document.querySelector('[data-gallery]');
+    if (!root) return;
+    const tiles = Array.from(root.querySelectorAll('[data-tile]'));
+    const filters = Array.from(root.querySelectorAll('[data-filter]'));
+
+    filters.forEach((button) => {
+        button.addEventListener('click', () => {
+            const key = button.dataset.filter;
+            filters.forEach((other) => other.setAttribute('aria-pressed', String(other === button)));
+            tiles.forEach((tile) => { tile.hidden = key !== 'all' && tile.dataset.album !== key; });
+        });
+    });
+
+    const dialog = document.getElementById('lightbox');
+    if (!dialog || typeof dialog.showModal !== 'function') return;
+    const image = dialog.querySelector('[data-lightbox-image]');
+    const caption = dialog.querySelector('[data-lightbox-caption]');
+    let list = [];
+    let current = 0;
+
+    const render = () => {
+        const item = list[current];
+        if (!item) return;
+        image.src = item.dataset.full;
+        image.alt = item.dataset.alt || '';
+        caption.textContent = item.dataset.caption || '';
+    };
+    const open = (item) => {
+        list = [...root.querySelectorAll('[data-lightbox-item]')].filter((el) => !el.hidden);
+        current = Math.max(0, list.indexOf(item));
+        render();
+        dialog.showModal();
+    };
+    const step = (delta) => { current = (current + delta + list.length) % list.length; render(); };
+
+    root.querySelectorAll('[data-lightbox-item]').forEach((item) => item.addEventListener('click', () => open(item)));
+    dialog.querySelector('[data-lightbox-close]')?.addEventListener('click', () => dialog.close());
+    dialog.querySelector('[data-lightbox-prev]')?.addEventListener('click', () => step(-1));
+    dialog.querySelector('[data-lightbox-next]')?.addEventListener('click', () => step(1));
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft') step(-1);
+        if (event.key === 'ArrowRight') step(1);
+    });
+}
+
+/* ----- Back to top ----- */
+function initBackToTop() {
+    const button = document.querySelector('[data-back-to-top]');
+    if (!button) return;
+    const update = () => button.classList.toggle('is-visible', window.scrollY > 600);
+    window.addEventListener('scroll', update, { passive: true });
+    button.addEventListener('click', () => window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }));
+    update();
+}
+
+/* ----- Score sheets: live total and grade ----- */
+function initSheets() {
+    document.querySelectorAll('[data-sheet]').forEach((sheet) => {
+        let bands = [];
+        try { bands = JSON.parse(sheet.dataset.bands || '[]'); } catch (e) { bands = []; }
+        const gradeFor = (total) => {
+            const band = bands.find((b) => total >= b.min && total <= b.max);
+            return band ? band.grade : '';
+        };
+        sheet.querySelectorAll('[data-row]').forEach((row) => {
+            const inputs = Array.from(row.querySelectorAll('[data-score]'));
+            const offered = row.querySelector('[data-offered]');
+            const totalEl = row.querySelector('[data-total]');
+            const gradeEl = row.querySelector('[data-grade]');
+            const update = () => {
+                const on = !offered || offered.checked;
+                inputs.forEach((input) => { input.disabled = !on; });
+                if (!on) {
+                    if (totalEl) totalEl.textContent = '—';
+                    if (gradeEl) { gradeEl.textContent = 'N/O'; gradeEl.classList.remove('is-fail'); }
+                    return;
+                }
+                let total = 0;
+                let bad = false;
+                inputs.forEach((input) => {
+                    const value = parseFloat(input.value);
+                    const max = parseFloat(input.max);
+                    if (!Number.isNaN(value)) {
+                        total += value;
+                        if (!Number.isNaN(max) && value > max) bad = true;
+                    }
+                    input.setCustomValidity(!Number.isNaN(value) && !Number.isNaN(max) && value > max ? 'Maximum is ' + max : '');
+                });
+                const touched = inputs.some((input) => input.value !== '');
+                if (totalEl) totalEl.textContent = touched ? String(Math.round(total * 100) / 100) : '—';
+                if (gradeEl) {
+                    const grade = touched && !bad ? gradeFor(total) : '';
+                    gradeEl.textContent = grade || '—';
+                    gradeEl.classList.toggle('is-fail', grade !== '' && grade === sheet.dataset.failGrade);
+                }
+            };
+            inputs.forEach((input) => input.addEventListener('input', update));
+            if (offered) offered.addEventListener('change', update);
+            update();
+        });
+    });
+    document.querySelectorAll('[data-autosubmit]').forEach((el) => el.addEventListener('change', () => el.form && el.form.submit()));
+}
+
+export function initSite() {
+    initSheets();
+    initMobileNav();
+    initHeaderFade();
+    initTermFilter();
+    initDropdowns();
+    initHero();
+    initGallery();
+    initBackToTop();
+}
