@@ -35,7 +35,7 @@ Set exactly one connection. A non-empty `DB_URL` takes precedence over individua
 
 **MySQL/MariaDB:** create a database and least-privilege user, then set `DB_CONNECTION=mysql`, `DB_URL=`, `DB_HOST`, `DB_PORT=3306`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_CHARSET=utf8mb4`, and `DB_COLLATION=utf8mb4_unicode_ci`. Do not use the database root account.
 
-**PostgreSQL/Neon:** set `DB_CONNECTION=pgsql`, `DB_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require`, and `DB_SSLMODE=require`. Alternatively leave `DB_URL` blank and use `DB_HOST`, `DB_PORT=5432`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, and `DB_SSLMODE`. Percent-encode special characters in URL credentials. Use a Neon pooled connection for web workers and a direct connection for schema work when pooling is unsuitable. Never point tests at production. Back up before `php artisan migrate --force` against a live database.
+**PostgreSQL/Neon:** set `DB_CONNECTION=pgsql`, `DB_CHARSET=utf8`, `DB_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require`, and `DB_SSLMODE=require`. Alternatively leave `DB_URL` blank and use `DB_HOST`, `DB_PORT=5432`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_CHARSET=utf8`, and `DB_SSLMODE`. Percent-encode special characters in URL credentials. Use a Neon pooled connection for web workers and a direct connection for schema work when pooling is unsuitable. Never point tests at production. Back up before `php artisan migrate --force` against a live database.
 
 ## Tests
 

@@ -83,6 +83,7 @@ jobs:
           DB_DATABASE: school_test
           DB_USERNAME: postgres
           DB_PASSWORD: password
+          DB_CHARSET: utf8
           DB_SSLMODE: disable
         run: |
           sed '/name="DB_CONNECTION"/d;/name="DB_DATABASE"/d' phpunit.xml > phpunit.ci.xml
